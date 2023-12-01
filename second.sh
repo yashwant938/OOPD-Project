@@ -1,26 +1,42 @@
 #!/bin/bash
 
 parent_dir="files"
-echo "Q1"
-for ((i=1; i<= 3; i++)); do
-	echo "Directory $i:"
-	echo "Copy"
-	t1=$(date +%s%3N); ./first cp "$parent_dir/dir$i" "$parent_dir/dir_copy$i" -r; t2=$(date +%s%3N); echo "$((t2-t1)) ms"
-	echo "Move"
-	t1=$(date +%s%3N); ./first mv "$parent_dir/dir_copy$i" "$parent_dir/dir_move$i" -r; t2=$(date +%s%3N); echo "$((t2-t1)) ms"
-	echo "Remove"
-	t1=$(date +%s%3N); ./first rm "$parent_dir/dir_move$i" -r; t2=$(date +%s%3N); echo "$((t2-t1)) ms"
-done
+mkdir -p $parent_dir
 
+dir1Count=3
+dir2Count=10
+dir3TotalCount=30
+dir3PerCount=10
 
-echo "Q3 (Multithreading)"
-for ((i=1; i<= 3; i++)); do
-	echo "Directory $i:"
-	echo "Copy"
-	t1=$(date +%s%3N); ./fourth cp "$parent_dir/dir$i" "$parent_dir/dir_copy$i" -r; t2=$(date +%s%3N); echo "$((t2-t1)) ms"
-	echo "Move"
-	t1=$(date +%s%3N); ./fourth mv "$parent_dir/dir_copy$i" "$parent_dir/dir_move$i" -r; t2=$(date +%s%3N); echo "$((t2-t1)) ms"
-	echo "Remove"
-	t1=$(date +%s%3N); ./fourth rm "$parent_dir/dir_move$i" -r; t2=$(date +%s%3N); echo "$((t2-t1)) ms"
-done
+echo "Creating directory 1 of $dir1Count files of each 1GB"
+time ( 
+    mkdir -p $parent_dir/dir1
+    for ((i=1; i<=$dir1Count; i++)); do
+        dd if=/dev/zero of=$parent_dir/dir1/file$i bs=1M count=1 status=none
+    done
+)
 
+echo "Creating directory 2 of $dir2Count files of each 10MB"
+time (
+    mkdir -p $parent_dir/dir2
+    for ((i=1; i<= $dir2Count; i++)); do
+        dd if=/dev/zero of=$parent_dir/dir2/file$i bs=10M count=1 status=none
+    done
+)
+
+echo "Creating directory 3 of $dir3TotalCount files of each 10MB"
+currDir3="$parent_dir/dir3"
+mkdir -p $currDir3
+i=1
+time (
+    while [ $i -le $dir3TotalCount ]; do
+    	dd if=/dev/zero of=$currDir3/file$i bs=1M count=1 status=none    	
+    	if [ "$((i % dir3PerCount))" -eq 0 ] && [ $i -ne $dir3TotalCount ]; then
+    		currDir3="$currDir3/subDir"
+    		mkdir -p $currDir3
+    	fi    	
+    	((i++))
+    done
+)
+
+echo "All files generated"
