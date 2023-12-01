@@ -3,10 +3,10 @@
 parent_dir="files"
 mkdir -p $parent_dir
 
-dir1Count=3
-dir2Count=10
-dir3TotalCount=30
-dir3PerCount=10
+dir1Count=100
+dir2Count=10000
+dir3TotalCount=10000
+dir3PerCount=100
 
 echo "Creating directory 1 of $dir1Count files of each 1GB"
 time ( 
