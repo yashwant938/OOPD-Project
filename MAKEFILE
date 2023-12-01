@@ -1,0 +1,11 @@
+Q1: Q1.cpp
+	g++ -o Q1 Q1.cpp
+
+Q3: Q3.cpp
+	g++ -o Q3 Q3.cpp
+
+Shell:
+	chmod 777 second.sh
+	chmod 777 four.sh
+	./second.sh
+	./four.sh
