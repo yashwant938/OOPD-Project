@@ -1,52 +1,78 @@
-# OOPD-Project
-Project contain four questions
+# C++ Filesystem & Concurrency Lab
 
-# Linux Shell Implementation and Profiling
+A Linux command interpreter comparing sequential and threaded filesystem operations in C++17.
 
-## Task 1: Basic Implementation of Commands
+## Why this project exists
 
-### Description:
-Implemented a custom Linux shell that supports five basic commands: cd, mv, rm, ls, and cp. The implementation includes additional options for each command, such as recursive and help options. The shell utilizes classes and objects, supporting wildcard characters as well.
+Filesystem utilities provide a concrete way to study directory traversal, command parsing, I/O behavior, and thread coordination. This project implements a small command set in two versions so those choices can be inspected side by side.
 
-### Features:
-1. **cd:** Change directory
-2. **mv:** Move files or directories
-3. **rm:** Remove files or directories
-4. **ls:** List files in a directory
-5. **cp:** Copy files or directories
+## Architecture
 
-### Additional Options:
-- Recursive: Implemented wherever applicable for relevant commands
-- Help: Provides information about command usage and available options
-- and other then these four features implemented
+```mermaid
+flowchart LR
+    Input[Interactive input or command arguments] --> Dispatch[Command dispatcher]
+    Dispatch --> Q1[Q1: sequential command classes]
+    Dispatch --> Q3[Q3: threaded command classes]
+    Q1 --> FS[C++17 filesystem API]
+    Q3 --> FS
+    FS --> Disk[Local files and directories]
+```
 
-## Task 2: Profiling
+`Q1.cpp` and `Q3.cpp` are separate executables. Each dispatches `cd`, `ls`, `cp`, `mv`, and `rm`; the threaded version creates and joins threads during recursive directory traversal.
 
-### Description:
-Created a bash script to generate different directory structures with varying file sizes and quantities. Used the `time` command to profile the execution time of each command for different directory structures.
+## Engineering Highlights
 
-### Directory Structures:
-1. 100 files of 1GB each
-2. 10,000 files of 10MB each
-3. 100 files of 10MB each with recursive subdirectories up to 10,000 files
+- Command-specific classes separate dispatch from filesystem operations.
+- `std::filesystem` handles paths, directory iteration, copies, moves, and removals.
+- Recursive traversal provides a direct comparison between sequential work and per-directory threading.
+- The threaded listing implementation coordinates console output with a mutex.
+- Shell scripts generate file trees and time copy/move/remove workloads.
 
-### Profiling Results:
-- Command execution time for each directory structure
+## Tech Stack
 
-## Task 3: Multi-threaded Implementation
+**Language:** C++17. **Platform:** Linux, POSIX-style shell. **Libraries:** C++ standard library, `std::filesystem`, `std::thread`, `std::mutex`. **Build:** GCC and Make.
 
-### Description:
-Implemented a multi-threaded version for commands involving recursion. The number of threads is dynamically determined based on available CPU cores and workload. The implementation uses the multi-threading library and employs a mutex lock for proper synchronization.
+## How It Works
 
-### Multi-threaded Commands:
-- Recursive versions of mv, rm, cp
+With command arguments, the executable performs one operation and exits. Without arguments, it reads commands interactively until `exit`. Options are implemented per command; use `-h` to inspect them.
 
-## Task 4: Profiling of Multi-threaded Version
+This is a focused command-interpreter experiment. It does not implement process launching, pipelines, redirection, shell job control, or complete POSIX command compatibility.
 
-### Description:
-Re-profiled the multi-threaded version and compared its performance with the previous single-threaded implementation.
+## Setup
 
-### Results:
-- Comparative analysis of execution time between single-threaded and multi-threaded versions for recursive commands
+Use Linux with a C++17-capable GCC toolchain. Compile the programs directly:
 
----
+```bash
+git clone https://github.com/yashwant938/OOPD-Project.git
+cd OOPD-Project
+g++ -std=c++17 -Wall -Wextra -O2 Q1.cpp -o Q1
+g++ -std=c++17 -Wall -Wextra -O2 -pthread Q3.cpp -o Q3
+```
+
+The existing `MAKEFILE` combines compilation with workload generation and mutation. Avoid using it as a quick-start build: `second.sh` writes roughly **110,100 MiB** of file data before copy overhead, and `four.sh` copies, moves, and deletes generated paths. Some script labels disagree with their actual `dd` sizes.
+
+## Example
+
+Start with read-only commands:
+
+```bash
+./Q1 ls -h
+./Q1 ls
+./Q3 ls
+```
+
+Both listing commands enumerate the current directory. Output order can vary, especially during threaded traversal. To try the interactive interpreter, run `./Q1`, enter `ls`, and then `exit`. Use disposable directories for copy, move, or remove experiments.
+
+## Engineering Challenges
+
+- Thread creation and I/O contention can outweigh parallelism; no reproducible speedup is claimed.
+- The current per-directory threading strategy is unbounded and needs a bounded worker pool.
+- Parsing and error handling are intentionally limited: quoted interactive paths, missing arguments, filesystem exceptions, and end-of-input need stronger handling.
+- Permission failures, symlinks, hidden files, and concurrent filesystem changes require explicit semantics and regression tests.
+
+## Future Improvements
+
+- Add unit and integration tests against small temporary directory trees, including failure paths.
+- Separate build targets from benchmarks and parameterize dataset sizes.
+- Replace unbounded threads with a bounded executor; measure elapsed time, CPU use, and storage effects over repeated trials.
+- Add sanitizer builds, Linux CI, and documented concurrency invariants.
