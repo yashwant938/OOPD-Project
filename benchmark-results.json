@@ -1,0 +1,65 @@
+{
+  "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "python": "3.14.4",
+  "cpu_count": 12,
+  "repeats": 7,
+  "notes": "Wall-clock subprocess time; generated local temporary files; alternating order; warm filesystem cache likely.",
+  "workloads": {
+    "small_files": {
+      "files": 256,
+      "bytes_per_file": 4096,
+      "samples_ms": {
+        "sequential": [
+          12.432,
+          7.29,
+          7.535,
+          16.644,
+          9.005,
+          6.993,
+          7.321
+        ],
+        "pool_4": [
+          21.85,
+          8.659,
+          9.943,
+          20.308,
+          10.708,
+          11.721,
+          10.419
+        ]
+      },
+      "median_ms": {
+        "sequential": 7.535,
+        "pool_4": 10.708
+      }
+    },
+    "larger_files": {
+      "files": 8,
+      "bytes_per_file": 524288,
+      "samples_ms": {
+        "sequential": [
+          19.624,
+          7.035,
+          7.298,
+          7.473,
+          18.293,
+          16.606,
+          6.682
+        ],
+        "pool_4": [
+          17.236,
+          6.83,
+          5.619,
+          6.191,
+          19.918,
+          18.375,
+          5.507
+        ]
+      },
+      "median_ms": {
+        "sequential": 7.473,
+        "pool_4": 6.83
+      }
+    }
+  }
+}
