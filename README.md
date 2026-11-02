@@ -64,10 +64,15 @@ Start with read-only commands:
 
 Both listing commands enumerate the current directory. Output order can vary, especially during threaded traversal. To try the interactive interpreter, run `./Q1`, enter `ls`, and then `exit`. Use disposable directories for copy, move, or remove experiments.
 
+Directory moves in both executables include dotfiles, hidden directories and empty directories. The existing lab behavior moves a directory's contents into the requested destination. The full copy must succeed before source removal begins; copy failures leave the complete source and may leave a partial destination. Failed moves return a nonzero CLI status. Symlinks, special files and destinations inside the source are rejected. This is not a transactional backup utility; do not modify either tree concurrently.
+
+After compiling Q1 and Q3, run the move regressions with `python3 -m unittest discover -s tests -p 'test_move.py' -v`. They use disposable temporary trees and cover hidden entries, nested copy failures, invalid destinations, symlink refusal and file moves.
+
 ## Bounded copy experiment
 
 ```bash
 g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -pthread bounded_copy.cpp -o bounded_copy
+# Compile Q1 and Q3 as shown above before running the complete suite.
 python3 -m unittest discover -s tests -v
 python3 benchmark.py --repeats 7
 ```
