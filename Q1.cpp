@@ -108,8 +108,7 @@ public:
 
 class MvCommand{
 public:
-    void rumCmd(const vector<string>& args){
-        
+    bool rumCmd(const vector<string>& args){
         bool help = find(args.begin(), args.end(), "-h") != args.end();
         bool force = find(args.begin(), args.end(), "-f") != args.end();
         if(help){
@@ -117,12 +116,12 @@ public:
             cout<< "source: Source file/directory to copy" << endl;
             cout<< "destination: Destination file/directory to paste" << endl;
             cout<< "-f: Do not prompt for confirmation before overwriting files" << endl;
-            return;
+            return true;
         }
 
         if (args.size() <= 2) {
             cerr << "Usage: mv <source> <destination>" << endl;
-            return;
+            return false;
         }
         
 
@@ -131,52 +130,50 @@ public:
 
         if (fs::exists(source)) {
             try {
-                fs::path destinationFilePath = destination;
-                if(!fs::exists(destinationFilePath)){
-                    fs::create_directory(destinationFilePath);
-                } 
-                if(fs::is_directory(destinationFilePath)) {
-                    destinationFilePath /= source.filename();    
-                }
+                if (fs::is_symlink(fs::symlink_status(source)))
+                    throw runtime_error("Moving symlinks is not supported");
                 if(fs::is_directory(source)) {
+                    const auto relative = fs::weakly_canonical(destination).lexically_relative(fs::canonical(source));
+                    if (relative.empty() || *relative.begin() != "..")
+                        throw runtime_error("Destination must be outside the source tree");
+                    // Preserve the entire source until every entry has been copied.
                     mvDir(source,destination,force);
-                    fs::remove(source);
+                    fs::remove_all(source);
                 }else{
+                    if (!fs::is_regular_file(source))
+                        throw runtime_error("Only regular files and directories can be moved");
+                    fs::path destinationFilePath = destination;
+                    if (!fs::exists(destinationFilePath)) fs::create_directory(destinationFilePath);
+                    if (fs::is_directory(destinationFilePath)) destinationFilePath /= source.filename();
                     fs::copy(source, destinationFilePath, fs::copy_options::overwrite_existing);
                     fs::remove(source);                   
                 }
 
                 cout<< "File/Directory moved successfully." << endl;
+                return true;
             
             } catch (const exception& e) {
-                cerr << "Error copying file/directory: " << e.what() << endl;
+                cerr << "Error moving file/directory: " << e.what() << endl;
             }
         } else {
             cerr << "Source file/directory does not exist." << endl;
         }
- 
+        return false;
     }
     
     void mvDir(const fs::path& source,const fs::path& destination,bool force){
 
+        fs::create_directories(destination);
         for (const auto& file : fs::directory_iterator(source)) {
-            if (!isHidden(file.path().filename().string())) {
-                if(!fs::exists(destination)){
-                    fs::create_directory(destination);
-                }
-                fs::path destinationFilePath = destination;
-                destinationFilePath /= file.path().filename();
-
-                if (fs::is_directory(file.path())) {
-                    mvDir(file.path(),destinationFilePath,force);
-                }else{
-                    if(force && fs::exists(destinationFilePath)){
-                        fs::remove(destinationFilePath);
-                    }
-                    fs::copy(file.path(), destinationFilePath, fs::copy_options::overwrite_existing);
-                }
+            const auto status = file.symlink_status();
+            const auto target = destination / file.path().filename();
+            if (fs::is_directory(status)) {
+                mvDir(file.path(), target, force);
+            } else if (fs::is_regular_file(status)) {
+                fs::copy_file(file.path(), target, fs::copy_options::overwrite_existing);
+            } else {
+                throw runtime_error("Only regular files and directories can be moved");
             }
-            fs::remove(file.path());
         }
 
     }
@@ -331,7 +328,7 @@ public:
 
 class CstmShell {
 public:
-    void run(bool isArgCli, char *argv[]) {
+    int run(bool isArgCli, char *argv[]) {
         while (true) {
             string input;
             vector<string> args;
@@ -351,6 +348,7 @@ public:
                 }
                 args.push_back(input);
             }
+            int commandStatus = 0;
             if (args.empty()) {
                 continue;
             } else if (args[0] == "cd") {
@@ -361,7 +359,7 @@ public:
                 ls.rumCmd(args);
             } else if (args[0] == "mv") {
                 MvCommand mv;
-                mv.rumCmd(args);
+                commandStatus = mv.rumCmd(args) ? 0 : 1;
             } else if (args[0] == "rm") {
                 RmCommand rm;
                 rm.rumCmd(args);
@@ -374,9 +372,10 @@ public:
                 cerr << "Unknown command: " << args[0] << ", Please check your command. Only supported commands are cd, ls, cp, mv & rm"<< endl;
             }
             if(isArgCli){
-                break;
+                return commandStatus;
             }
         }
+        return 0;
     }
 };
 
@@ -384,12 +383,12 @@ int main(int argc, char *argv[]) {
     CstmShell cstmShellObj;
     bool isArgCli=false;
     if(argc==1){
-        cstmShellObj.run(isArgCli,argv);
+        return cstmShellObj.run(isArgCli,argv);
     }else{
         isArgCli=true;
         ++argv;
         --argc;
-        cstmShellObj.run(isArgCli,argv);
+        return cstmShellObj.run(isArgCli,argv);
     }
     return 0;
 }
